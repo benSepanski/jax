@@ -501,7 +501,10 @@ def transform_array(x, transforms):
       case ReshapeTransform():
         result = lax.reshape(result, transform.shape)
       case _:
-        raise NotImplementedError(f"Unsupported transform: {transform}")
+        if hasattr(transform, "transform_array"):
+          result = transform.transform_array(result)
+        else:
+          raise NotImplementedError(f"Unsupported transform: {transform}")
   return result
 
 def transform_swap_array(x, transforms, val):
@@ -551,7 +554,11 @@ def transform_swap_array(x, transforms, val):
         new_val = lax.reshape(new_val, transform.shape)
         intermediates.append(new_val)
       case _:
-        raise NotImplementedError(f"Unsupported transform: {transform}")
+        if hasattr(transform, "transform_array"):
+          new_val = transform.transform_array(new_val)
+          intermediates.append(new_val)
+        else:
+          raise NotImplementedError(f"Unsupported transform: {transform}")
 
   # Will hold the final state of the `x` after `val` has been written to the
   # transformed location, and will have the same shape as `x`.
@@ -586,6 +593,8 @@ def transform_swap_array(x, transforms, val):
       new_x = lax.reshape(new_x, np.shape(intermediate))
     elif isinstance(transform, BitcastTransform):
       new_x = bitcast(new_x, intermediate.dtype)
+    elif hasattr(transform, "transform_array"):
+      new_x = transform.transform_array(new_x)
     else:
       raise NotImplementedError(f"Unsupported transform: {transform}")
 
